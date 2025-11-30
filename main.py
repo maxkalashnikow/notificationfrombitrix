@@ -93,8 +93,7 @@ async def bitrix_webhook(request: Request):
     send_url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
         "chat_id": GROUP_CHAT_ID,
-        "text": text,
-        "parse_mode": "Markdown"
+        "text": text
     }
 
     resp = requests.post(send_url, json=payload)
