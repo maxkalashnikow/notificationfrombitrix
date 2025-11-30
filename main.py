@@ -14,13 +14,15 @@ app = FastAPI()
 
 
 def send_telegram(text: str):
-    """Простая функция отправки сообщения в Telegram, с логами ответа."""
+    """Отправка сообщения в Telegram с логами ответа."""
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
-        "chat_id": GROUP_CHAT_ID,
+        "chat_id": GROUP_CHAT_ID,  # тут можно подставить конкретный ID
         "text": text,
-        # parse_mode убрал, чтобы точно не ломалось из-за Markdown
     }
+    print("=== SENDING TO TELEGRAM ===")
+    print("PAYLOAD:", payload)
+
     resp = requests.post(url, json=payload)
     print("=== TELEGRAM RESPONSE ===")
     print("STATUS:", resp.status_code)
@@ -28,11 +30,11 @@ def send_telegram(text: str):
 
 
 @app.get("/")
-def root():
+async def root():
     return {"status": "ok"}
 
 
-# ------- РУЧКА ДЛЯ TELEGRAM (как была) -------
+# ---------- TELEGRAM /webhook (как было) ----------
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     data = await request.json()
@@ -47,36 +49,37 @@ async def telegram_webhook(request: Request):
     if text != "test":
         return {"ok": True}
 
-    # тут можно отправлять в ту же группу
     send_telegram("Слово 'test' обнаружено! 🟢")
     return {"ok": True}
 
 
-# ------- НОВАЯ РУЧКА ДЛЯ BITRIX -------
+# ---------- BITRIX /bitrix: ТОЛЬКО QUERY ПАРАМЕТРЫ ----------
 @app.get("/bitrix")
-@app.post("/bitrix")
+@app.post("/bitrix")  # на всякий случай, если Битрикс дергает POST
 async def bitrix_webhook(request: Request):
     print("=== BITRIX HIT ===")
 
-    # ЛОГИРУЕМ query-параметры
+    # ВСЁ берем только из query string:
     params = dict(request.query_params)
     print("QUERY PARAMS:", params)
 
-    # Пытаемся прочитать тело (если POST с JSON/FORM)
-    try:
-        body = await request.json()
-        print("JSON BODY:", body)
-    except Exception:
-        body = None
-        print("NO JSON BODY OR PARSE ERROR")
+    deal_id = params.get("deal_id")
+    stage_id = params.get("stage_id")
+    title = params.get("title")
 
-    # ДЛЯ ТЕСТА: ВСЕГДА шлём сообщение в телеграм, без условий
-    text = "Тест из ручки /bitrix\n"
-    if params:
-        text += f"query: {params}\n"
-    if body:
-        text += f"body: {body}\n"
+    # формируем текст для Telegram
+    lines = ["🔔 Сделка поменяла стадию (из Bitrix)"]
+    if deal_id:
+        lines.append(f"ID сделки: {deal_id}")
+    if stage_id:
+        lines.append(f"Стадия: {stage_id}")
+    if title:
+        lines.append(f"Название: {title}")
 
+    text = "\n".join(lines)
+
+    # отправляем сообщение
     send_telegram(text)
 
+    # битриксу можно вернуть просто ok
     return {"ok": True}
