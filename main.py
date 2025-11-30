@@ -89,10 +89,10 @@ async def bitrix_webhook(request: Request):
         f"Название: {title}" if title else None,
     ]
     text = "\n".join(line for line in text_lines if line)
-
+    chat_id = GROUP_CHAT_ID or message["chat"]["id"]
     send_url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
-        "chat_id": GROUP_CHAT_ID,
+        "chat_id": chat_id,
         "text": text
     }
 
